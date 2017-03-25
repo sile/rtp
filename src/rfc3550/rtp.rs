@@ -61,7 +61,7 @@ pub struct RtpFixedHeader {
     pub seq_num: u16,
     pub timestamp: RtpTimestamp,
     pub ssrc: Ssrc,
-    pub csrcs: Vec<Csrc>,
+    pub csrc_list: Vec<Csrc>,
     pub extension: Option<RtpHeaderExtension>,
 }
 impl ReadFrom for RtpFixedHeader {
@@ -83,7 +83,7 @@ impl ReadFrom for RtpFixedHeader {
         let seq_num = track_try!(reader.read_u16be());
         let timestamp = track_try!(reader.read_u32be());
         let ssrc = track_try!(reader.read_u32be());
-        let csrcs = track_try!((0..csrc_count).map(|_| reader.read_u32be()).collect());
+        let csrc_list = track_try!((0..csrc_count).map(|_| reader.read_u32be()).collect());
         let extension = if extension {
             let e = track_try!(RtpHeaderExtension::read_from(reader));
             Some(e)
@@ -98,7 +98,7 @@ impl ReadFrom for RtpFixedHeader {
                seq_num: seq_num,
                timestamp: timestamp,
                ssrc: ssrc,
-               csrcs: csrcs,
+               csrc_list: csrc_list,
            })
     }
 }
@@ -111,8 +111,8 @@ impl WriteTo for RtpFixedHeader {
         if self.extension.is_some() {
             b |= 0b0001_0000;
         }
-        track_assert!(self.csrcs.len() <= 0b0000_1111, ErrorKind::Invalid);
-        b |= self.csrcs.len() as u8;
+        track_assert!(self.csrc_list.len() <= 0b0000_1111, ErrorKind::Invalid);
+        b |= self.csrc_list.len() as u8;
         track_try!(writer.write_u8(b));
 
         let mut b = 0;
@@ -125,7 +125,7 @@ impl WriteTo for RtpFixedHeader {
         track_try!(writer.write_u16be(self.seq_num));
         track_try!(writer.write_u32be(self.timestamp));
         track_try!(writer.write_u32be(self.ssrc));
-        for csrc in self.csrcs.iter() {
+        for csrc in self.csrc_list.iter() {
             track_try!(writer.write_u32be(*csrc));
         }
         if let Some(ref extension) = self.extension {

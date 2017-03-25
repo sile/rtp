@@ -19,8 +19,11 @@ pub mod types {
     pub type U7 = u8;
     pub type U24 = u32;
     pub type RtpTimestamp = u32;
+    pub type NtpTimestamp = u64;
+    pub type NtpMiddleTimetamp = u32;
     pub type Ssrc = u32;
     pub type Csrc = u32;
+    pub type SsrcOrCsrc = u32;
 }
 
 pub mod constants {
