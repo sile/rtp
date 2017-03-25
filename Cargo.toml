@@ -1,0 +1,8 @@
+[package]
+name = "rtp"
+version = "0.1.0"
+authors = ["Takeru Ohta <phjgt308@gmail.com>"]
+
+[dependencies]
+trackable = "0.1"
+handy_async = "0.2"
