@@ -4,6 +4,7 @@ use handy_async::sync_io::{ReadExt, WriteExt};
 use {Result, ErrorKind};
 use io::{ReadFrom, WriteTo};
 use packet::Packet;
+use traits;
 use types::{U7, RtpTimestamp, Ssrc, Csrc};
 use constants::RTP_VERSION;
 
@@ -14,6 +15,7 @@ pub struct RtpPacket {
     pub padding: Vec<u8>,
 }
 impl Packet for RtpPacket {}
+impl traits::RtpPacket for RtpPacket {}
 impl ReadFrom for RtpPacket {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let header = track_try!(RtpFixedHeader::read_from(reader));
