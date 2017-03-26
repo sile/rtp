@@ -15,7 +15,11 @@ pub struct RtpPacket {
     pub padding: Vec<u8>,
 }
 impl Packet for RtpPacket {}
-impl traits::RtpPacket for RtpPacket {}
+impl traits::RtpPacket for RtpPacket {
+    fn supports_type(_ty: U7) -> bool {
+        true
+    }
+}
 impl ReadFrom for RtpPacket {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let header = track_try!(RtpFixedHeader::read_from(reader));

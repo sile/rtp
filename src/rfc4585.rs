@@ -30,7 +30,20 @@ pub enum RtcpPacket {
     Psfb(RtcpPayloadSpecificFeedback),
 }
 impl Packet for RtcpPacket {}
-impl traits::RtcpPacket for RtcpPacket {}
+impl traits::RtcpPacket for RtcpPacket {
+    fn supports_type(ty: u8) -> bool {
+        match ty {
+            rfc3550::RTCP_PACKET_TYPE_SR |
+            rfc3550::RTCP_PACKET_TYPE_RR |
+            rfc3550::RTCP_PACKET_TYPE_SDES |
+            rfc3550::RTCP_PACKET_TYPE_BYE |
+            rfc3550::RTCP_PACKET_TYPE_APP |
+            RTCP_PACKET_TYPE_RTPFB |
+            RTCP_PACKET_TYPE_PSFB => true,
+            _ => false,
+        }
+    }
+}
 impl ReadFrom for RtcpPacket {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0; 2];
@@ -61,6 +74,7 @@ impl ReadFrom for RtcpPacket {
                 track_err!(RtcpPayloadSpecificFeedback::read_from(reader).map(From::from))
             }
             _ => {
+                track_assert_eq!(buf[0] >> 6, RTP_VERSION, ErrorKind::Invalid);
                 track_panic!(ErrorKind::Unsupported,
                              "Unknown packet type: {}",
                              packet_type)
@@ -122,7 +136,11 @@ pub enum RtcpTransportLayerFeedback {
     Nack(GenericNack),
 }
 impl Packet for RtcpTransportLayerFeedback {}
-impl traits::RtcpPacket for RtcpTransportLayerFeedback {}
+impl traits::RtcpPacket for RtcpTransportLayerFeedback {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_RTPFB
+    }
+}
 impl ReadFrom for RtcpTransportLayerFeedback {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (fb_message_type, rest) = track_try!(read_common(reader, RTCP_PACKET_TYPE_RTPFB));
@@ -165,7 +183,11 @@ pub enum RtcpPayloadSpecificFeedback {
     Afb(ApplicationLayerFeedback),
 }
 impl Packet for RtcpPayloadSpecificFeedback {}
-impl traits::RtcpPacket for RtcpPayloadSpecificFeedback {}
+impl traits::RtcpPacket for RtcpPayloadSpecificFeedback {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_RTPFB
+    }
+}
 impl ReadFrom for RtcpPayloadSpecificFeedback {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (fb_message_type, rest) = track_try!(read_common(reader, RTCP_PACKET_TYPE_PSFB));

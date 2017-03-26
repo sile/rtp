@@ -33,7 +33,18 @@ pub enum RtcpPacket {
     App(RtcpApplicationDefined),
 }
 impl Packet for RtcpPacket {}
-impl traits::RtcpPacket for RtcpPacket {}
+impl traits::RtcpPacket for RtcpPacket {
+    fn supports_type(ty: u8) -> bool {
+        match ty {
+            RTCP_PACKET_TYPE_SR |
+            RTCP_PACKET_TYPE_RR |
+            RTCP_PACKET_TYPE_SDES |
+            RTCP_PACKET_TYPE_BYE |
+            RTCP_PACKET_TYPE_APP => true,
+            _ => false,
+        }
+    }
+}
 impl ReadFrom for RtcpPacket {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0; 2];
@@ -175,7 +186,11 @@ impl RtcpSenderReport {
     }
 }
 impl Packet for RtcpSenderReport {}
-impl traits::RtcpPacket for RtcpSenderReport {}
+impl traits::RtcpPacket for RtcpSenderReport {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_SR
+    }
+}
 impl ReadFrom for RtcpSenderReport {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (reception_report_count, payload) = track_try!(read_sctp(reader, RTCP_PACKET_TYPE_SR));
@@ -305,7 +320,11 @@ impl RtcpReceiverReport {
     }
 }
 impl Packet for RtcpReceiverReport {}
-impl traits::RtcpPacket for RtcpReceiverReport {}
+impl traits::RtcpPacket for RtcpReceiverReport {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_RR
+    }
+}
 impl ReadFrom for RtcpReceiverReport {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (reception_report_count, payload) = track_try!(read_sctp(reader, RTCP_PACKET_TYPE_RR));
@@ -356,7 +375,11 @@ impl RtcpSourceDescription {
     }
 }
 impl Packet for RtcpSourceDescription {}
-impl traits::RtcpPacket for RtcpSourceDescription {}
+impl traits::RtcpPacket for RtcpSourceDescription {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_SDES
+    }
+}
 impl ReadFrom for RtcpSourceDescription {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (source_count, payload) = track_try!(read_sctp(reader, RTCP_PACKET_TYPE_SDES));
@@ -507,7 +530,11 @@ impl RtcpGoodbye {
     }
 }
 impl Packet for RtcpGoodbye {}
-impl traits::RtcpPacket for RtcpGoodbye {}
+impl traits::RtcpPacket for RtcpGoodbye {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_BYE
+    }
+}
 impl ReadFrom for RtcpGoodbye {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (source_count, payload) = track_try!(read_sctp(reader, RTCP_PACKET_TYPE_BYE));
@@ -558,7 +585,11 @@ pub struct RtcpApplicationDefined {
     pub data: Vec<u8>,
 }
 impl Packet for RtcpApplicationDefined {}
-impl traits::RtcpPacket for RtcpApplicationDefined {}
+impl traits::RtcpPacket for RtcpApplicationDefined {
+    fn supports_type(ty: u8) -> bool {
+        ty == RTCP_PACKET_TYPE_APP
+    }
+}
 impl ReadFrom for RtcpApplicationDefined {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (subtype, payload) = track_try!(read_sctp(reader, RTCP_PACKET_TYPE_APP));
