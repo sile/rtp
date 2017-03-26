@@ -2,6 +2,8 @@
 extern crate trackable;
 extern crate handy_async;
 extern crate crypto;
+extern crate num;
+extern crate splay_tree;
 
 pub use error::{Error, ErrorKind};
 
@@ -24,6 +26,7 @@ pub mod types {
     pub type U7 = u8;
     pub type U13 = u16;
     pub type U24 = u32;
+    pub type U48 = u64;
     pub type RtpTimestamp = u32;
     pub type NtpTimestamp = u64;
     pub type NtpMiddleTimetamp = u32;
