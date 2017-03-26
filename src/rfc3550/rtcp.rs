@@ -26,9 +26,17 @@ pub const SDES_ITEM_TYPE_PRIV: u8 = 8;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtcpPacketReader;
 impl traits::ReadPacket for RtcpPacketReader {
-    type Packet = RtcpPacket;
+    type Packet = RtcpCompoundPacket<RtcpPacket>;
     fn read_packet<R: Read>(&mut self, reader: &mut R) -> Result<Self::Packet> {
-        RtcpPacket::read_from(reader)
+        // TODO: optimize
+        let buf = track_try!(reader.read_all_bytes());
+        let mut packets = Vec::new();
+        let reader = &mut &buf[..];
+        while !reader.is_empty() {
+            let packet = track_try!(RtcpPacket::read_from(reader));
+            packets.push(packet);
+        }
+        Ok(RtcpCompoundPacket::new(packets))
     }
     fn supports_type(&self, ty: u8) -> bool {
         match ty {
@@ -45,11 +53,26 @@ impl traits::ReadPacket for RtcpPacketReader {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtcpPacketWriter;
 impl traits::WritePacket for RtcpPacketWriter {
-    type Packet = RtcpPacket;
+    type Packet = RtcpCompoundPacket<RtcpPacket>;
     fn write_packet<W: Write>(&mut self, writer: &mut W, packet: &Self::Packet) -> Result<()> {
-        packet.write_to(writer)
+        for p in packet.packets.iter() {
+            track_try!(p.write_to(writer));
+        }
+        Ok(())
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RtcpCompoundPacket<T> {
+    pub packets: Vec<T>,
+}
+impl<T> RtcpCompoundPacket<T> {
+    pub fn new(packets: Vec<T>) -> Self {
+        RtcpCompoundPacket { packets: packets }
+    }
+}
+impl<T: Packet> Packet for RtcpCompoundPacket<T> {}
+impl<T: traits::RtcpPacket> traits::RtcpPacket for RtcpCompoundPacket<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RtcpPacket {
@@ -145,6 +168,7 @@ fn read_sctp<R: Read>(reader: &mut R, expected_type: u8) -> Result<(U5, Vec<u8>)
 
     let word_count = track_try!(reader.read_u16be()) as usize;
     let mut payload = track_try!(reader.read_bytes(word_count * 4));
+
     if padding {
         let payload_len = payload.len();
         track_assert_ne!(payload_len, 0, ErrorKind::Invalid);
@@ -431,6 +455,7 @@ impl ReadFrom for SdesChunk {
             }
             let len = track_try!(reader.read_u8()) as usize;
             let text = track_try!(reader.read_string(len));
+
             read_bytes += 1 + len;
             let item = match ty {
                 SDES_ITEM_TYPE_CNAME => SdesItem::Cname(text),

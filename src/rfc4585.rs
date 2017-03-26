@@ -21,9 +21,17 @@ pub const PSFB_MESSAGE_TYPE_AFB: u8 = 15;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtcpPacketReader;
 impl traits::ReadPacket for RtcpPacketReader {
-    type Packet = RtcpPacket;
+    type Packet = rfc3550::RtcpCompoundPacket<RtcpPacket>;
     fn read_packet<R: Read>(&mut self, reader: &mut R) -> Result<Self::Packet> {
-        RtcpPacket::read_from(reader)
+        // TODO: optimize
+        let buf = track_try!(reader.read_all_bytes());
+        let mut packets = Vec::new();
+        let reader = &mut &buf[..];
+        while !reader.is_empty() {
+            let packet = track_try!(RtcpPacket::read_from(reader));
+            packets.push(packet);
+        }
+        Ok(rfc3550::RtcpCompoundPacket::new(packets))
     }
     fn supports_type(&self, ty: u8) -> bool {
         match ty {
@@ -42,9 +50,12 @@ impl traits::ReadPacket for RtcpPacketReader {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtcpPacketWriter;
 impl traits::WritePacket for RtcpPacketWriter {
-    type Packet = RtcpPacket;
+    type Packet = rfc3550::RtcpCompoundPacket<RtcpPacket>;
     fn write_packet<W: Write>(&mut self, writer: &mut W, packet: &Self::Packet) -> Result<()> {
-        packet.write_to(writer)
+        for p in packet.packets.iter() {
+            track_try!(p.write_to(writer));
+        }
+        Ok(())
     }
 }
 
