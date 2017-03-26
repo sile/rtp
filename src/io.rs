@@ -8,4 +8,9 @@ pub trait ReadFrom: Sized {
 
 pub trait WriteTo {
     fn write_to<W: Write>(&self, writer: &mut W) -> Result<()>;
+    fn to_bytes(&self) -> Result<Vec<u8>> {
+        let mut buf = Vec::new();
+        track_try!(self.write_to(&mut buf));
+        Ok(buf)
+    }
 }
