@@ -6,7 +6,9 @@ pub use error::{Error, ErrorKind};
 
 pub mod io;
 pub mod packet;
+pub mod traits;
 pub mod rfc3550;
+pub mod rfc5761;
 
 mod error;
 
