@@ -3,8 +3,7 @@ use handy_async::sync_io::{ReadExt, WriteExt};
 
 use {Result, ErrorKind};
 use io::{ReadFrom, WriteTo};
-use packet::Packet;
-use traits;
+use traits::{self, Packet};
 use types::{U5, U6, U7, U13, Ssrc};
 use constants::RTP_VERSION;
 use rfc3550;
@@ -20,18 +19,13 @@ pub const PSFB_MESSAGE_TYPE_RPSI: u8 = 3;
 pub const PSFB_MESSAGE_TYPE_AFB: u8 = 15;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RtcpPacket {
-    Sr(rfc3550::RtcpSenderReport),
-    Rr(rfc3550::RtcpReceiverReport),
-    Sdes(rfc3550::RtcpSourceDescription),
-    Bye(rfc3550::RtcpGoodbye),
-    App(rfc3550::RtcpApplicationDefined),
-    Rtpfb(RtcpTransportLayerFeedback),
-    Psfb(RtcpPayloadSpecificFeedback),
-}
-impl Packet for RtcpPacket {}
-impl traits::RtcpPacket for RtcpPacket {
-    fn supports_type(ty: u8) -> bool {
+pub struct RtcpPacketReader;
+impl traits::ReadPacket for RtcpPacketReader {
+    type Packet = RtcpPacket;
+    fn read_packet<R: Read>(&mut self, reader: &mut R) -> Result<Self::Packet> {
+        RtcpPacket::read_from(reader)
+    }
+    fn supports_type(&self, ty: u8) -> bool {
         match ty {
             rfc3550::RTCP_PACKET_TYPE_SR |
             rfc3550::RTCP_PACKET_TYPE_RR |
@@ -44,6 +38,28 @@ impl traits::RtcpPacket for RtcpPacket {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RtcpPacketWriter;
+impl traits::WritePacket for RtcpPacketWriter {
+    type Packet = RtcpPacket;
+    fn write_packet<W: Write>(&mut self, writer: &mut W, packet: &Self::Packet) -> Result<()> {
+        packet.write_to(writer)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RtcpPacket {
+    Sr(rfc3550::RtcpSenderReport),
+    Rr(rfc3550::RtcpReceiverReport),
+    Sdes(rfc3550::RtcpSourceDescription),
+    Bye(rfc3550::RtcpGoodbye),
+    App(rfc3550::RtcpApplicationDefined),
+    Rtpfb(RtcpTransportLayerFeedback),
+    Psfb(RtcpPayloadSpecificFeedback),
+}
+impl Packet for RtcpPacket {}
+impl traits::RtcpPacket for RtcpPacket {}
 impl ReadFrom for RtcpPacket {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let mut buf = [0; 2];
@@ -136,11 +152,7 @@ pub enum RtcpTransportLayerFeedback {
     Nack(GenericNack),
 }
 impl Packet for RtcpTransportLayerFeedback {}
-impl traits::RtcpPacket for RtcpTransportLayerFeedback {
-    fn supports_type(ty: u8) -> bool {
-        ty == RTCP_PACKET_TYPE_RTPFB
-    }
-}
+impl traits::RtcpPacket for RtcpTransportLayerFeedback {}
 impl ReadFrom for RtcpTransportLayerFeedback {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (fb_message_type, rest) = track_try!(read_common(reader, RTCP_PACKET_TYPE_RTPFB));
@@ -183,11 +195,7 @@ pub enum RtcpPayloadSpecificFeedback {
     Afb(ApplicationLayerFeedback),
 }
 impl Packet for RtcpPayloadSpecificFeedback {}
-impl traits::RtcpPacket for RtcpPayloadSpecificFeedback {
-    fn supports_type(ty: u8) -> bool {
-        ty == RTCP_PACKET_TYPE_RTPFB
-    }
-}
+impl traits::RtcpPacket for RtcpPayloadSpecificFeedback {}
 impl ReadFrom for RtcpPayloadSpecificFeedback {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let (fb_message_type, rest) = track_try!(read_common(reader, RTCP_PACKET_TYPE_PSFB));

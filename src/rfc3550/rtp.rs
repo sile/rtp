@@ -3,10 +3,30 @@ use handy_async::sync_io::{ReadExt, WriteExt};
 
 use {Result, ErrorKind};
 use io::{ReadFrom, WriteTo};
-use packet::Packet;
-use traits;
+use traits::{self, Packet};
 use types::{U7, RtpTimestamp, Ssrc, Csrc};
 use constants::RTP_VERSION;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RtpPacketReader;
+impl traits::ReadPacket for RtpPacketReader {
+    type Packet = RtpPacket;
+    fn read_packet<R: Read>(&mut self, reader: &mut R) -> Result<Self::Packet> {
+        RtpPacket::read_from(reader)
+    }
+    fn supports_type(&self, _ty: u8) -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RtpPacketWriter;
+impl traits::WritePacket for RtpPacketWriter {
+    type Packet = RtpPacket;
+    fn write_packet<W: Write>(&mut self, writer: &mut W, packet: &Self::Packet) -> Result<()> {
+        packet.write_to(writer)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtpPacket {
@@ -15,11 +35,7 @@ pub struct RtpPacket {
     pub padding: Vec<u8>,
 }
 impl Packet for RtpPacket {}
-impl traits::RtpPacket for RtpPacket {
-    fn supports_type(_ty: U7) -> bool {
-        true
-    }
-}
+impl traits::RtpPacket for RtpPacket {}
 impl ReadFrom for RtpPacket {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let header = track_try!(RtpFixedHeader::read_from(reader));
