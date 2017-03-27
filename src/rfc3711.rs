@@ -104,9 +104,8 @@ impl SrtpContext {
         let mut decrypted: Vec<u8> = Vec::new();
         track_try!(header.write_to(&mut decrypted));
 
-        for (i, block) in encrypted_portion.chunks(block_size).enumerate() {
-            let mut input = [0; 16];
-            (&mut input[8..]).write_u64be(i as u64).unwrap();
+        for block in encrypted_portion.chunks(block_size) {
+            let input = [0; 16];
             let mut output = [0; 16];
             ctr.process(&input[..], &mut output[..]);
 
@@ -199,9 +198,8 @@ impl SrtcpContext {
 
         let mut decrypted = Vec::from(&packet[..8]);
 
-        for (i, block) in encrypted_portion.chunks(block_size).enumerate() {
-            let mut input = [0; 16];
-            (&mut input[8..]).write_u64be(i as u64).unwrap();
+        for block in encrypted_portion.chunks(block_size) {
+            let input = [0; 16];
             let mut output = [0; 16];
             ctr.process(&input[..], &mut output[..]);
 
@@ -341,7 +339,9 @@ mod test {
         let packet = rtp_reader.read_packet(&mut &packet[..]).unwrap();
 
         let expected_prefix = [0xbe, 0x9c, 0x8c, 0x86, 0x81, 0x80, 0x81, 0x86, 0x8d, 0x9c, 0xfd,
-                               0x1b, 0x0d, 0x05, 0x01, 0x00];
+                               0x1b, 0x0d, 0x05, 0x01, 0x00, 0x01, 0x05, 0x0d, 0x1b, 0xff, 0x9b,
+                               0x8d, 0x85, 0x81, 0x80, 0x81, 0x85, 0x8d, 0x9b, 0xff, 0x1b];
+
         assert_eq!(&packet.payload[..expected_prefix.len()],
                    &expected_prefix[..]);
     }
