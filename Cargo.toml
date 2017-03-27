@@ -9,3 +9,8 @@ handy_async = "0.2"
 rust-crypto = "0.2"
 num = "0.1"
 splay_tree = "0.2"
+
+[dev-dependencies]
+clap = "2"
+fibers = "0.1"
+futures = "0.1"

@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use {Result};
+use Result;
 use traits::{ReadPacket, WritePacket, RtpPacket, RtcpPacket, Packet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,7 +74,7 @@ impl<T, U> WritePacket for MuxPacketWriter<T, U>
     fn write_packet<W: Write>(&mut self, writer: &mut W, packet: &Self::Packet) -> Result<()> {
         match *packet {
             MuxedPacket::Rtp(ref p) => self.rtp_writer.write_packet(writer, p),
-            MuxedPacket::Rtcp(ref p) => self.rtcp_writer.write_packet(writer, p),            
+            MuxedPacket::Rtcp(ref p) => self.rtcp_writer.write_packet(writer, p),
         }
     }
 }
