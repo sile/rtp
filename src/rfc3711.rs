@@ -105,13 +105,9 @@ impl SrtpContext {
         track_try!(header.write_to(&mut decrypted));
 
         for block in encrypted_portion.chunks(block_size) {
-            let input = [0; 16];
-            let mut output = [0; 16];
-            ctr.process(&input[..], &mut output[..]);
-
-            for (a, b) in block.iter().zip(output.iter()) {
-                decrypted.push(*a ^ *b);
-            }
+            let old_len = decrypted.len();
+            decrypted.resize(old_len + block.len(), 0);
+            ctr.process(block, &mut decrypted[old_len..]);
         }
 
         Ok(decrypted)
@@ -197,15 +193,10 @@ impl SrtcpContext {
         let block_size = self.session_encr_key.len();
 
         let mut decrypted = Vec::from(&packet[..8]);
-
         for block in encrypted_portion.chunks(block_size) {
-            let input = [0; 16];
-            let mut output = [0; 16];
-            ctr.process(&input[..], &mut output[..]);
-
-            for (a, b) in block.iter().zip(output.iter()) {
-                decrypted.push(*a ^ *b);
-            }
+            let old_len = decrypted.len();
+            decrypted.resize(old_len + block.len(), 0);
+            ctr.process(block, &mut decrypted[old_len..]);
         }
 
         Ok(decrypted)
