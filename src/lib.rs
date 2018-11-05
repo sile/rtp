@@ -1,18 +1,18 @@
 #[macro_use]
 extern crate trackable;
-extern crate handy_async;
 extern crate crypto;
+extern crate handy_async;
 extern crate num;
 extern crate splay_tree;
 
 pub use error::{Error, ErrorKind};
 
 pub mod io;
-pub mod traits;
 pub mod rfc3550;
 pub mod rfc3711;
 pub mod rfc4585;
 pub mod rfc5761;
+pub mod traits;
 
 mod error;
 

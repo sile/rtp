@@ -1,6 +1,6 @@
 use std::io;
-use trackable::error::{TrackableError, IntoTrackableError};
 use trackable::error::{ErrorKind as TrackableErrorKind, ErrorKindExt};
+use trackable::error::{IntoTrackableError, TrackableError};
 
 pub type Error = TrackableError<ErrorKind>;
 

@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
+use traits::{Packet, ReadPacket, RtcpPacket, RtpPacket, WritePacket};
 use Result;
-use traits::{ReadPacket, WritePacket, RtpPacket, RtcpPacket, Packet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MuxPacketReader<T, U> {
@@ -9,10 +9,11 @@ pub struct MuxPacketReader<T, U> {
     rtcp_reader: U,
 }
 impl<T, U> MuxPacketReader<T, U>
-    where T: ReadPacket,
-          T::Packet: RtpPacket,
-          U: ReadPacket,
-          U::Packet: RtcpPacket
+where
+    T: ReadPacket,
+    T::Packet: RtpPacket,
+    U: ReadPacket,
+    U::Packet: RtcpPacket,
 {
     pub fn new(rtp_reader: T, rtcp_reader: U) -> Self {
         MuxPacketReader {
@@ -22,10 +23,11 @@ impl<T, U> MuxPacketReader<T, U>
     }
 }
 impl<T, U> ReadPacket for MuxPacketReader<T, U>
-    where T: ReadPacket,
-          T::Packet: RtpPacket,
-          U: ReadPacket,
-          U::Packet: RtcpPacket
+where
+    T: ReadPacket,
+    T::Packet: RtpPacket,
+    U: ReadPacket,
+    U::Packet: RtcpPacket,
 {
     type Packet = MuxedPacket<T::Packet, U::Packet>;
     fn read_packet<R: Read>(&mut self, reader: &mut R) -> Result<Self::Packet> {
@@ -52,10 +54,11 @@ pub struct MuxPacketWriter<T, U> {
     rtcp_writer: U,
 }
 impl<T, U> MuxPacketWriter<T, U>
-    where T: WritePacket,
-          T::Packet: RtpPacket,
-          U: WritePacket,
-          U::Packet: RtcpPacket
+where
+    T: WritePacket,
+    T::Packet: RtpPacket,
+    U: WritePacket,
+    U::Packet: RtcpPacket,
 {
     pub fn new(rtp_writer: T, rtcp_writer: U) -> Self {
         MuxPacketWriter {
@@ -65,10 +68,11 @@ impl<T, U> MuxPacketWriter<T, U>
     }
 }
 impl<T, U> WritePacket for MuxPacketWriter<T, U>
-    where T: WritePacket,
-          T::Packet: RtpPacket,
-          U: WritePacket,
-          U::Packet: RtcpPacket
+where
+    T: WritePacket,
+    T::Packet: RtpPacket,
+    U: WritePacket,
+    U::Packet: RtcpPacket,
 {
     type Packet = MuxedPacket<T::Packet, U::Packet>;
     fn write_packet<W: Write>(&mut self, writer: &mut W, packet: &Self::Packet) -> Result<()> {
@@ -85,7 +89,8 @@ pub enum MuxedPacket<T, U> {
     Rtcp(U),
 }
 impl<T, U> Packet for MuxedPacket<T, U>
-    where T: RtpPacket,
-          U: RtcpPacket
+where
+    T: RtpPacket,
+    U: RtcpPacket,
 {
 }

@@ -1,11 +1,11 @@
-use std::io::{Read, Write};
 use handy_async::sync_io::{ReadExt, WriteExt};
+use std::io::{Read, Write};
 
-use {Result, ErrorKind};
+use constants::RTP_VERSION;
 use io::{ReadFrom, WriteTo};
 use traits::{self, Packet};
-use types::{U5, U24, RtpTimestamp, NtpTimestamp, NtpMiddleTimetamp, Ssrc, SsrcOrCsrc};
-use constants::RTP_VERSION;
+use types::{NtpMiddleTimetamp, NtpTimestamp, RtpTimestamp, Ssrc, SsrcOrCsrc, U24, U5};
+use {ErrorKind, Result};
 
 pub const RTCP_PACKET_TYPE_SR: u8 = 200;
 pub const RTCP_PACKET_TYPE_RR: u8 = 201;
@@ -40,11 +40,11 @@ impl traits::ReadPacket for RtcpPacketReader {
     }
     fn supports_type(&self, ty: u8) -> bool {
         match ty {
-            RTCP_PACKET_TYPE_SR |
-            RTCP_PACKET_TYPE_RR |
-            RTCP_PACKET_TYPE_SDES |
-            RTCP_PACKET_TYPE_BYE |
-            RTCP_PACKET_TYPE_APP => true,
+            RTCP_PACKET_TYPE_SR
+            | RTCP_PACKET_TYPE_RR
+            | RTCP_PACKET_TYPE_SDES
+            | RTCP_PACKET_TYPE_BYE
+            | RTCP_PACKET_TYPE_APP => true,
             _ => false,
         }
     }
@@ -103,11 +103,11 @@ impl ReadFrom for RtcpPacket {
             RTCP_PACKET_TYPE_APP => {
                 track_err!(RtcpApplicationDefined::read_from(reader).map(From::from))
             }
-            _ => {
-                track_panic!(ErrorKind::Unsupported,
-                             "Unknown packet type: {}",
-                             packet_type)
-            }
+            _ => track_panic!(
+                ErrorKind::Unsupported,
+                "Unknown packet type: {}",
+                packet_type
+            ),
         }
     }
 }
@@ -150,21 +150,25 @@ impl From<RtcpApplicationDefined> for RtcpPacket {
 
 fn read_sctp<R: Read>(reader: &mut R, expected_type: u8) -> Result<(U5, Vec<u8>)> {
     let b = track_try!(reader.read_u8());
-    track_assert_eq!(b >> 6,
-                     RTP_VERSION,
-                     ErrorKind::Unsupported,
-                     "Unsupported RTP version: {}",
-                     b >> 6);
+    track_assert_eq!(
+        b >> 6,
+        RTP_VERSION,
+        ErrorKind::Unsupported,
+        "Unsupported RTP version: {}",
+        b >> 6
+    );
     let padding = (b & 0b0010_0000) != 0;
     let packet_specific = b & 0b0001_1111;
 
     let packet_type = track_try!(reader.read_u8());
-    track_assert_eq!(packet_type,
-                     expected_type,
-                     ErrorKind::Invalid,
-                     "Unexpected SCTP packet type: actual={}, expected={}",
-                     packet_type,
-                     expected_type);
+    track_assert_eq!(
+        packet_type,
+        expected_type,
+        ErrorKind::Invalid,
+        "Unexpected SCTP packet type: actual={}, expected={}",
+        packet_type,
+        expected_type
+    );
 
     let word_count = track_try!(reader.read_u16be()) as usize;
     let mut payload = track_try!(reader.read_bytes(word_count * 4));
@@ -183,11 +187,12 @@ fn read_sctp<R: Read>(reader: &mut R, expected_type: u8) -> Result<(U5, Vec<u8>)
     Ok((packet_specific, payload))
 }
 
-fn write_sctp<W: Write>(writer: &mut W,
-                        packet_type: u8,
-                        packet_specific: U5,
-                        payload: &[u8])
-                        -> Result<()> {
+fn write_sctp<W: Write>(
+    writer: &mut W,
+    packet_type: u8,
+    packet_specific: U5,
+    payload: &[u8],
+) -> Result<()> {
     track_assert_eq!(payload.len() % 4, 0, ErrorKind::Invalid);
 
     track_try!(writer.write_u8(RTP_VERSION << 6 | packet_specific));
@@ -247,14 +252,14 @@ impl ReadFrom for RtcpSenderReport {
         let extensions = track_try!(reader.read_all_bytes());
 
         Ok(RtcpSenderReport {
-               ssrc: ssrc,
-               ntp_timestamp: ntp_timestamp,
-               rtp_timestamp: rtp_timestamp,
-               sent_packets: sent_packets,
-               sent_octets: sent_octets,
-               reception_reports: reception_reports,
-               extensions: extensions,
-           })
+            ssrc: ssrc,
+            ntp_timestamp: ntp_timestamp,
+            rtp_timestamp: rtp_timestamp,
+            sent_packets: sent_packets,
+            sent_octets: sent_octets,
+            reception_reports: reception_reports,
+            extensions: extensions,
+        })
     }
 }
 impl WriteTo for RtcpSenderReport {
@@ -270,12 +275,16 @@ impl WriteTo for RtcpSenderReport {
         }
         payload.extend(&self.extensions);
 
-        track_assert!(self.reception_reports.len() <= 0x0001_1111,
-                      ErrorKind::Invalid);
-        track_try!(write_sctp(writer,
-                              RTCP_PACKET_TYPE_SR,
-                              self.reception_reports.len() as u8,
-                              &payload));
+        track_assert!(
+            self.reception_reports.len() <= 0x0001_1111,
+            ErrorKind::Invalid
+        );
+        track_try!(write_sctp(
+            writer,
+            RTCP_PACKET_TYPE_SR,
+            self.reception_reports.len() as u8,
+            &payload
+        ));
         Ok(())
     }
 }
@@ -314,14 +323,14 @@ impl ReadFrom for ReceptionReport {
         let delay_since_last_sr = track_try!(reader.read_u32be());
 
         Ok(ReceptionReport {
-               ssrc: ssrc,
-               fraction_lost: fraction_lost,
-               packets_lost: packets_lost,
-               seq_num_ext: seq_num_ext,
-               jitter: jitter,
-               last_sr_timestamp: last_sr_timestamp,
-               delay_since_last_sr: delay_since_last_sr,
-           })
+            ssrc: ssrc,
+            fraction_lost: fraction_lost,
+            packets_lost: packets_lost,
+            seq_num_ext: seq_num_ext,
+            jitter: jitter,
+            last_sr_timestamp: last_sr_timestamp,
+            delay_since_last_sr: delay_since_last_sr,
+        })
     }
 }
 impl WriteTo for ReceptionReport {
@@ -372,10 +381,10 @@ impl ReadFrom for RtcpReceiverReport {
         let extensions = track_try!(reader.read_all_bytes());
 
         Ok(RtcpReceiverReport {
-               ssrc: ssrc,
-               reception_reports: reception_reports,
-               extensions: extensions,
-           })
+            ssrc: ssrc,
+            reception_reports: reception_reports,
+            extensions: extensions,
+        })
     }
 }
 impl WriteTo for RtcpReceiverReport {
@@ -387,12 +396,16 @@ impl WriteTo for RtcpReceiverReport {
         }
         payload.extend(&self.extensions);
 
-        track_assert!(self.reception_reports.len() <= 0b0001_1111,
-                      ErrorKind::Invalid);
-        track_try!(write_sctp(writer,
-                              RTCP_PACKET_TYPE_RR,
-                              self.reception_reports.len() as u8,
-                              &payload));
+        track_assert!(
+            self.reception_reports.len() <= 0b0001_1111,
+            ErrorKind::Invalid
+        );
+        track_try!(write_sctp(
+            writer,
+            RTCP_PACKET_TYPE_RR,
+            self.reception_reports.len() as u8,
+            &payload
+        ));
         Ok(())
     }
 }
@@ -413,7 +426,11 @@ impl ReadFrom for RtcpSourceDescription {
         let (source_count, payload) = track_try!(read_sctp(reader, RTCP_PACKET_TYPE_SDES));
         let reader = &mut &payload[..];
 
-        let chunks = track_try!((0..source_count).map(|_| SdesChunk::read_from(reader)).collect());
+        let chunks = track_try!(
+            (0..source_count)
+                .map(|_| SdesChunk::read_from(reader))
+                .collect()
+        );
         Ok(RtcpSourceDescription { chunks: chunks })
     }
 }
@@ -425,10 +442,12 @@ impl WriteTo for RtcpSourceDescription {
         }
 
         track_assert!(self.chunks.len() <= 0b0001_1111, ErrorKind::Invalid);
-        track_try!(write_sctp(writer,
-                              RTCP_PACKET_TYPE_SDES,
-                              self.chunks.len() as u8,
-                              &payload));
+        track_try!(write_sctp(
+            writer,
+            RTCP_PACKET_TYPE_SDES,
+            self.chunks.len() as u8,
+            &payload
+        ));
         Ok(())
     }
 }
@@ -474,9 +493,9 @@ impl ReadFrom for SdesChunk {
         track_try!(reader.read_bytes(padding_len as usize)); // discard
 
         Ok(SdesChunk {
-               ssrc_or_csrc: ssrc_or_csrc,
-               items: items,
-           })
+            ssrc_or_csrc: ssrc_or_csrc,
+            items: items,
+        })
     }
 }
 impl WriteTo for SdesChunk {
@@ -571,9 +590,9 @@ impl ReadFrom for RtcpGoodbye {
             reason = Some(track_try!(reader.read_string(len as usize)));
         }
         Ok(RtcpGoodbye {
-               ssrc_csrc_list: list,
-               reason: reason,
-           })
+            ssrc_csrc_list: list,
+            reason: reason,
+        })
     }
 }
 impl WriteTo for RtcpGoodbye {
@@ -594,10 +613,12 @@ impl WriteTo for RtcpGoodbye {
         }
 
         track_assert!(self.ssrc_csrc_list.len() <= 0b0001_1111, ErrorKind::Invalid);
-        track_try!(write_sctp(writer,
-                              RTCP_PACKET_TYPE_BYE,
-                              self.ssrc_csrc_list.len() as u8,
-                              &payload));
+        track_try!(write_sctp(
+            writer,
+            RTCP_PACKET_TYPE_BYE,
+            self.ssrc_csrc_list.len() as u8,
+            &payload
+        ));
         Ok(())
     }
 }
@@ -621,11 +642,11 @@ impl ReadFrom for RtcpApplicationDefined {
         track_try!(reader.read_exact(&mut name));
         let data = track_try!(reader.read_all_bytes());
         Ok(RtcpApplicationDefined {
-               subtype: subtype,
-               ssrc_or_csrc: ssrc_or_csrc,
-               name: name,
-               data: data,
-           })
+            subtype: subtype,
+            ssrc_or_csrc: ssrc_or_csrc,
+            name: name,
+            data: data,
+        })
     }
 }
 impl WriteTo for RtcpApplicationDefined {
@@ -636,7 +657,12 @@ impl WriteTo for RtcpApplicationDefined {
         payload.extend(&self.data);
 
         track_assert!(self.subtype <= 0b0001_1111, ErrorKind::Invalid);
-        track_try!(write_sctp(writer, RTCP_PACKET_TYPE_APP, self.subtype, &payload));
+        track_try!(write_sctp(
+            writer,
+            RTCP_PACKET_TYPE_APP,
+            self.subtype,
+            &payload
+        ));
         Ok(())
     }
 }

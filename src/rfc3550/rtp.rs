@@ -1,11 +1,11 @@
-use std::io::{Read, Write};
 use handy_async::sync_io::{ReadExt, WriteExt};
+use std::io::{Read, Write};
 
-use {Result, ErrorKind};
+use constants::RTP_VERSION;
 use io::{ReadFrom, WriteTo};
 use traits::{self, Packet};
-use types::{U7, RtpTimestamp, Ssrc, Csrc};
-use constants::RTP_VERSION;
+use types::{Csrc, RtpTimestamp, Ssrc, U7};
+use {ErrorKind, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RtpPacketReader;
@@ -51,10 +51,10 @@ impl ReadFrom for RtpPacket {
             padding = payload.drain(payload_len - padding_len..).collect();
         }
         Ok(RtpPacket {
-               header: header,
-               payload: payload,
-               padding: padding,
-           })
+            header: header,
+            payload: payload,
+            padding: padding,
+        })
     }
 }
 impl WriteTo for RtpPacket {
@@ -62,13 +62,17 @@ impl WriteTo for RtpPacket {
         track_try!(self.header.write_to(writer));
         track_try!(writer.write_all(&self.payload));
 
-        track_assert_ne!(self.header.padding,
-                         self.padding.is_empty(),
-                         ErrorKind::Invalid);
+        track_assert_ne!(
+            self.header.padding,
+            self.padding.is_empty(),
+            ErrorKind::Invalid
+        );
         if !self.padding.is_empty() {
-            track_assert_eq!(*self.padding.last().unwrap() as usize,
-                             self.padding.len(),
-                             ErrorKind::Invalid);
+            track_assert_eq!(
+                *self.padding.last().unwrap() as usize,
+                self.padding.len(),
+                ErrorKind::Invalid
+            );
             track_try!(writer.write_all(&self.padding));
         }
         Ok(())
@@ -89,11 +93,13 @@ pub struct RtpFixedHeader {
 impl ReadFrom for RtpFixedHeader {
     fn read_from<R: Read>(reader: &mut R) -> Result<Self> {
         let b = track_try!(reader.read_u8());
-        track_assert_eq!(b >> 6,
-                         RTP_VERSION,
-                         ErrorKind::Unsupported,
-                         "Unsupported RTP version: {}",
-                         b >> 6);
+        track_assert_eq!(
+            b >> 6,
+            RTP_VERSION,
+            ErrorKind::Unsupported,
+            "Unsupported RTP version: {}",
+            b >> 6
+        );
         let padding = (b & 0b0010_0000) != 0;
         let extension = (b & 0b0001_0000) != 0;
         let csrc_count = b & 0b0000_1111;
@@ -113,15 +119,15 @@ impl ReadFrom for RtpFixedHeader {
             None
         };
         Ok(RtpFixedHeader {
-               padding: padding,
-               extension: extension,
-               marker: marker,
-               payload_type: payload_type,
-               seq_num: seq_num,
-               timestamp: timestamp,
-               ssrc: ssrc,
-               csrc_list: csrc_list,
-           })
+            padding: padding,
+            extension: extension,
+            marker: marker,
+            payload_type: payload_type,
+            seq_num: seq_num,
+            timestamp: timestamp,
+            ssrc: ssrc,
+            csrc_list: csrc_list,
+        })
     }
 }
 impl WriteTo for RtpFixedHeader {
@@ -168,9 +174,9 @@ impl ReadFrom for RtpHeaderExtension {
         let word_count = track_try!(reader.read_u16be());
         let extension = track_try!(reader.read_bytes(word_count as usize * 4));
         Ok(RtpHeaderExtension {
-               profile_specific: profile_specific,
-               extension: extension,
-           })
+            profile_specific: profile_specific,
+            extension: extension,
+        })
     }
 }
 impl WriteTo for RtpHeaderExtension {

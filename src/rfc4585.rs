@@ -1,12 +1,12 @@
-use std::io::{Read, Write};
 use handy_async::sync_io::{ReadExt, WriteExt};
+use std::io::{Read, Write};
 
-use {Result, ErrorKind};
-use io::{ReadFrom, WriteTo};
-use traits::{self, Packet};
-use types::{U5, U6, U7, U13, Ssrc};
 use constants::RTP_VERSION;
+use io::{ReadFrom, WriteTo};
 use rfc3550;
+use traits::{self, Packet};
+use types::{Ssrc, U13, U5, U6, U7};
+use {ErrorKind, Result};
 
 pub const RTCP_PACKET_TYPE_RTPFB: u8 = 205;
 pub const RTCP_PACKET_TYPE_PSFB: u8 = 206;
@@ -35,13 +35,13 @@ impl traits::ReadPacket for RtcpPacketReader {
     }
     fn supports_type(&self, ty: u8) -> bool {
         match ty {
-            rfc3550::RTCP_PACKET_TYPE_SR |
-            rfc3550::RTCP_PACKET_TYPE_RR |
-            rfc3550::RTCP_PACKET_TYPE_SDES |
-            rfc3550::RTCP_PACKET_TYPE_BYE |
-            rfc3550::RTCP_PACKET_TYPE_APP |
-            RTCP_PACKET_TYPE_RTPFB |
-            RTCP_PACKET_TYPE_PSFB => true,
+            rfc3550::RTCP_PACKET_TYPE_SR
+            | rfc3550::RTCP_PACKET_TYPE_RR
+            | rfc3550::RTCP_PACKET_TYPE_SDES
+            | rfc3550::RTCP_PACKET_TYPE_BYE
+            | rfc3550::RTCP_PACKET_TYPE_APP
+            | RTCP_PACKET_TYPE_RTPFB
+            | RTCP_PACKET_TYPE_PSFB => true,
             _ => false,
         }
     }
@@ -102,9 +102,11 @@ impl ReadFrom for RtcpPacket {
             }
             _ => {
                 track_assert_eq!(buf[0] >> 6, RTP_VERSION, ErrorKind::Invalid);
-                track_panic!(ErrorKind::Unsupported,
-                             "Unknown packet type: {}",
-                             packet_type)
+                track_panic!(
+                    ErrorKind::Unsupported,
+                    "Unknown packet type: {}",
+                    packet_type
+                )
             }
         }
     }
@@ -171,11 +173,11 @@ impl ReadFrom for RtcpTransportLayerFeedback {
             RTPFB_MESSAGE_TYPE_NACK => {
                 track_err!(GenericNack::read_from(&mut &rest[..])).map(From::from)
             }
-            _ => {
-                track_panic!(ErrorKind::Unsupported,
-                             "Unknown feedback type: {}",
-                             fb_message_type)
-            }
+            _ => track_panic!(
+                ErrorKind::Unsupported,
+                "Unknown feedback type: {}",
+                fb_message_type
+            ),
         }
     }
 }
@@ -184,10 +186,12 @@ impl WriteTo for RtcpTransportLayerFeedback {
         match *self {
             RtcpTransportLayerFeedback::Nack(ref f) => {
                 let payload = track_try!(f.to_bytes());
-                track_err!(write_common(writer,
-                                        RTCP_PACKET_TYPE_RTPFB,
-                                        RTPFB_MESSAGE_TYPE_NACK,
-                                        &payload))
+                track_err!(write_common(
+                    writer,
+                    RTCP_PACKET_TYPE_RTPFB,
+                    RTPFB_MESSAGE_TYPE_NACK,
+                    &payload
+                ))
             }
         }
     }
@@ -224,11 +228,11 @@ impl ReadFrom for RtcpPayloadSpecificFeedback {
             PSFB_MESSAGE_TYPE_AFB => {
                 track_err!(ApplicationLayerFeedback::read_from(reader).map(From::from))
             }
-            _ => {
-                track_panic!(ErrorKind::Unsupported,
-                             "Unknown feedback type: {}",
-                             fb_message_type)
-            }
+            _ => track_panic!(
+                ErrorKind::Unsupported,
+                "Unknown feedback type: {}",
+                fb_message_type
+            ),
         }
     }
 }
@@ -237,31 +241,39 @@ impl WriteTo for RtcpPayloadSpecificFeedback {
         match *self {
             RtcpPayloadSpecificFeedback::Pli(ref f) => {
                 let payload = track_try!(f.to_bytes());
-                track_err!(write_common(writer,
-                                        RTCP_PACKET_TYPE_PSFB,
-                                        PSFB_MESSAGE_TYPE_PLI,
-                                        &payload))
+                track_err!(write_common(
+                    writer,
+                    RTCP_PACKET_TYPE_PSFB,
+                    PSFB_MESSAGE_TYPE_PLI,
+                    &payload
+                ))
             }
             RtcpPayloadSpecificFeedback::Sli(ref f) => {
                 let payload = track_try!(f.to_bytes());
-                track_err!(write_common(writer,
-                                        RTCP_PACKET_TYPE_PSFB,
-                                        PSFB_MESSAGE_TYPE_SLI,
-                                        &payload))
+                track_err!(write_common(
+                    writer,
+                    RTCP_PACKET_TYPE_PSFB,
+                    PSFB_MESSAGE_TYPE_SLI,
+                    &payload
+                ))
             }
             RtcpPayloadSpecificFeedback::Rpsi(ref f) => {
                 let payload = track_try!(f.to_bytes());
-                track_err!(write_common(writer,
-                                        RTCP_PACKET_TYPE_PSFB,
-                                        PSFB_MESSAGE_TYPE_RPSI,
-                                        &payload))
+                track_err!(write_common(
+                    writer,
+                    RTCP_PACKET_TYPE_PSFB,
+                    PSFB_MESSAGE_TYPE_RPSI,
+                    &payload
+                ))
             }
             RtcpPayloadSpecificFeedback::Afb(ref f) => {
                 let payload = track_try!(f.to_bytes());
-                track_err!(write_common(writer,
-                                        RTCP_PACKET_TYPE_PSFB,
-                                        PSFB_MESSAGE_TYPE_AFB,
-                                        &payload))
+                track_err!(write_common(
+                    writer,
+                    RTCP_PACKET_TYPE_PSFB,
+                    PSFB_MESSAGE_TYPE_AFB,
+                    &payload
+                ))
             }
         }
     }
@@ -287,11 +299,12 @@ impl From<ApplicationLayerFeedback> for RtcpPayloadSpecificFeedback {
     }
 }
 
-fn write_common<W: Write>(writer: &mut W,
-                          packet_type: u8,
-                          fb_message_type: U5,
-                          payload: &[u8])
-                          -> Result<()> {
+fn write_common<W: Write>(
+    writer: &mut W,
+    packet_type: u8,
+    fb_message_type: U5,
+    payload: &[u8],
+) -> Result<()> {
     track_assert_eq!(payload.len() % 4, 0, ErrorKind::Invalid);
 
     track_try!(writer.write_u8(RTP_VERSION << 6 | fb_message_type));
@@ -308,21 +321,25 @@ fn write_common<W: Write>(writer: &mut W,
 
 fn read_common<R: Read>(reader: &mut R, expected_type: u8) -> Result<(U5, Vec<u8>)> {
     let b = track_try!(reader.read_u8());
-    track_assert_eq!(b >> 6,
-                     RTP_VERSION,
-                     ErrorKind::Unsupported,
-                     "Unsupported RTP version: {}",
-                     b >> 6);
+    track_assert_eq!(
+        b >> 6,
+        RTP_VERSION,
+        ErrorKind::Unsupported,
+        "Unsupported RTP version: {}",
+        b >> 6
+    );
     let padding = (b & 0b0010_0000) != 0;
     let fb_message_type = b & 0b0001_1111;
 
     let packet_type = track_try!(reader.read_u8());
-    track_assert_eq!(packet_type,
-                     expected_type,
-                     ErrorKind::Invalid,
-                     "Unexpected SCTP packet type: actual={}, expected={}",
-                     packet_type,
-                     expected_type);
+    track_assert_eq!(
+        packet_type,
+        expected_type,
+        ErrorKind::Invalid,
+        "Unexpected SCTP packet type: actual={}, expected={}",
+        packet_type,
+        expected_type
+    );
 
     let word_count = track_try!(reader.read_u16be()) as usize;
     let mut payload = track_try!(reader.read_bytes(word_count * 4));
@@ -354,11 +371,11 @@ impl ReadFrom for GenericNack {
         let packet_id = track_try!(reader.read_u16be());
         let lost_packets_bitmask = track_try!(reader.read_u16be());
         Ok(GenericNack {
-               sender_ssrc: sender_ssrc,
-               media_ssrc: media_ssrc,
-               packet_id: packet_id,
-               lost_packets_bitmask: lost_packets_bitmask,
-           })
+            sender_ssrc: sender_ssrc,
+            media_ssrc: media_ssrc,
+            packet_id: packet_id,
+            lost_packets_bitmask: lost_packets_bitmask,
+        })
     }
 }
 impl WriteTo for GenericNack {
@@ -381,9 +398,9 @@ impl ReadFrom for PictureLossIndication {
         let sender_ssrc = track_try!(reader.read_u32be());
         let media_ssrc = track_try!(reader.read_u32be());
         Ok(PictureLossIndication {
-               sender_ssrc: sender_ssrc,
-               media_ssrc: media_ssrc,
-           })
+            sender_ssrc: sender_ssrc,
+            media_ssrc: media_ssrc,
+        })
     }
 }
 impl WriteTo for PictureLossIndication {
@@ -411,12 +428,12 @@ impl ReadFrom for SliceLossIndication {
         let number = num_and_pic >> 6;
         let picture_id = (num_and_pic as u8) & 0b0011_1111;
         Ok(SliceLossIndication {
-               sender_ssrc: sender_ssrc,
-               media_ssrc: media_ssrc,
-               first: first,
-               number: number,
-               picture_id: picture_id,
-           })
+            sender_ssrc: sender_ssrc,
+            media_ssrc: media_ssrc,
+            first: first,
+            number: number,
+            picture_id: picture_id,
+        })
     }
 }
 impl WriteTo for SliceLossIndication {
@@ -447,11 +464,11 @@ impl ReadFrom for ReferencePictureSelectionIndication {
         let info = track_try!(reader.read_bytes(info_len as usize));
         let _ = track_try!(reader.read_bytes(padding as usize));
         Ok(ReferencePictureSelectionIndication {
-               sender_ssrc: sender_ssrc,
-               media_ssrc: media_ssrc,
-               rtp_payload_type: rtp_payload_type,
-               information: info,
-           })
+            sender_ssrc: sender_ssrc,
+            media_ssrc: media_ssrc,
+            rtp_payload_type: rtp_payload_type,
+            information: info,
+        })
     }
 }
 impl WriteTo for ReferencePictureSelectionIndication {
@@ -489,10 +506,10 @@ impl ReadFrom for ApplicationLayerFeedback {
         let media_ssrc = track_try!(reader.read_u32be());
         let data = track_try!(reader.read_all_bytes());
         Ok(ApplicationLayerFeedback {
-               sender_ssrc: sender_ssrc,
-               media_ssrc: media_ssrc,
-               data: data,
-           })
+            sender_ssrc: sender_ssrc,
+            media_ssrc: media_ssrc,
+            data: data,
+        })
     }
 }
 impl WriteTo for ApplicationLayerFeedback {

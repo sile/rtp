@@ -6,37 +6,48 @@ extern crate trackable;
 extern crate rtp;
 
 use clap::{App, Arg};
-use fibers::{Spawn, Executor, InPlaceExecutor};
-use fibers::net::UdpSocket;
 use fibers::net::futures::RecvFrom;
-use futures::{Future, Poll, Async};
-use trackable::error::ErrorKindExt;
-use rtp::{Error, ErrorKind};
-use rtp::traits::ReadPacket;
+use fibers::net::UdpSocket;
+use fibers::{Executor, InPlaceExecutor, Spawn};
+use futures::{Async, Future, Poll};
 use rtp::rfc3550::RtpPacketReader;
-use rtp::rfc3711::{SrtpPacketReader, SrtpContext};
+use rtp::rfc3711::{SrtpContext, SrtpPacketReader};
+use rtp::traits::ReadPacket;
+use rtp::{Error, ErrorKind};
+use trackable::error::ErrorKindExt;
 
 fn main() {
     let matches = App::new("srtpsrv")
-        .arg(Arg::with_name("PORT").short("p").takes_value(true).default_value("6000"))
-        .arg(Arg::with_name("MASTER_KEY").short("k").takes_value(true)
-             .default_value("d34d74f37d74e75f3bdb4f76f1bdf477"))
-        .arg(Arg::with_name("MASTER_SALT").short("s").takes_value(true)
-             .default_value("7f1fe35d78f77e75e79f7beb5f7a"))
-        .get_matches();
+        .arg(
+            Arg::with_name("PORT")
+                .short("p")
+                .takes_value(true)
+                .default_value("6000"),
+        ).arg(
+            Arg::with_name("MASTER_KEY")
+                .short("k")
+                .takes_value(true)
+                .default_value("d34d74f37d74e75f3bdb4f76f1bdf477"),
+        ).arg(
+            Arg::with_name("MASTER_SALT")
+                .short("s")
+                .takes_value(true)
+                .default_value("7f1fe35d78f77e75e79f7beb5f7a"),
+        ).get_matches();
     let port = matches.value_of("PORT").unwrap();
     let addr = format!("0.0.0.0:{}", port).parse().unwrap();
 
     let master_key = hex_str_to_bytes(matches.value_of("MASTER_KEY").unwrap());
     let master_salt = hex_str_to_bytes(matches.value_of("MASTER_SALT").unwrap());
     let context = SrtpContext::new(&master_key, &master_salt);
-    let future = track_err!(UdpSocket::bind(addr)).and_then(move |socket| {
-                                                                SrtpRecvLoop::new(socket, context)
-                                                            });
+    let future = track_err!(UdpSocket::bind(addr))
+        .and_then(move |socket| SrtpRecvLoop::new(socket, context));
 
     let mut executor = InPlaceExecutor::new().unwrap();
     let monitor = executor.spawn_monitor(future);
-    let result = executor.run_fiber(monitor).unwrap()
+    let result = executor
+        .run_fiber(monitor)
+        .unwrap()
         .map_err(|e| e.unwrap_or_else(|| ErrorKind::Other.cause("disconnected")));
     track_try_unwrap!(result);
 }
